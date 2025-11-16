@@ -1447,4 +1447,17 @@ body {
     transform: translateY(-1px);
 }
 
+/* Light yellow scrollbar for the calendar grid */
+.calendar-grid::-webkit-scrollbar {
+    width: 7px;
+}
+
+.calendar-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 207, 107, 0.55); /* soft buttery yellow */
+    border-radius: 999px;
+}
+
+.calendar-grid {
+    scrollbar-color: rgba(255, 207, 107, 0.55) transparent; /* Firefox */
+}
 
