@@ -1,10 +1,17 @@
+<!-- startup_screen.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zenned - AI Productivity Platform</title>
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
     <link rel="stylesheet" href="startup.css">
 </head>
 <body>
@@ -12,8 +19,14 @@
     
     <nav class="navbar">
         <div class="logo">
+            <div class="logo-icon">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
             <span>Zenned</span>
         </div>
+        <button class="nav-toggle" aria-label="Toggle navigation">
+            <i class="fas fa-bars"></i>
+        </button>
         <div class="nav-links">
             <a href="#">Features</a>
             <a href="#">Pricing</a>
@@ -23,9 +36,17 @@
     </nav>
 
     <section class="hero">
-        <h1>Organize Your Work, Amplify Your Productivity</h1>
-        <p>Your smart, cross-platform AI scheduler powered by GPT. Plan, prioritize, and stay productive anywhere.</p>
-        
+        <p class="hero-pill">
+            <i class="fas fa-bolt"></i> AI-Powered Hive for Your Day
+        </p>
+
+        <h1>Organize Your Work, Amplify Your Productivity.</h1>
+
+        <p class="hero-subtitle">
+            Zenned is your AI calendar and task hive powered by GPT – helping you plan, prioritize,
+            and keep every commitment in perfect flow across web, desktop, and mobile.
+        </p>
+
         <div class="cta-buttons">
             <button class="btn btn-primary" onclick="window.location.href='Calendar UI/authenticate/login.html'">
                 <i class="fas fa-rocket"></i> Get Started
@@ -35,38 +56,47 @@
             </button>
         </div>
 
+        <div class="hero-highlights">
+            <span><i class="fas fa-bolt"></i> 2x faster planning</span>
+            <span><i class="fas fa-cloud"></i> Syncs across devices</span>
+            <span><i class="fas fa-shield-alt"></i> Your data, protected</span>
+        </div>
+
         <div class="features">
             <div class="card">
-                <div class="card-icon">
-                    <i class="fas fa-robot"></i>
-                </div>
+                <div class="card-icon"><i class="fas fa-robot"></i></div>
                 <h3>AI-Powered</h3>
-                <p>Let GPT help you organize your tasks smarter and faster</p>
+                <p>Let GPT help you organize your tasks smarter and faster.</p>
             </div>
-           
+
             <div class="card">
-                <div class="card-icon">
-                    <i class="fas fa-sync-alt"></i>
-                </div>
+                <div class="card-icon"><i class="fas fa-sync-alt"></i></div>
                 <h3>Cross-Platform</h3>
-                <p>Use Zenned on web, desktop, and mobile seamlessly</p>
+                <p>Use Zenned on web, desktop, and mobile.</p>
             </div>
-            
+
             <div class="card">
-                <div class="card-icon">
-                    <i class="fas fa-chart-line"></i>
-                </div>
+                <div class="card-icon"><i class="fas fa-chart-line"></i></div>
                 <h3>Productivity Insights</h3>
-                <p>Track your progress and stay on top of deadlines efficiently</p>
+                <p>Track your progress and stay on top of deadlines.</p>
             </div>
         </div>
     </section>
 
     <footer class="footer">
-        <p>&copy; 2023 Zenned. All rights reserved. Building the future of productivity.</p>
-       
+        <p>&copy; 2023 Zenned. All rights reserved.</p>
     </footer>
-    
 
+    <script>
+        // Simple mobile nav toggle
+        const navToggle = document.querySelector('.nav-toggle');
+        const navLinks = document.querySelector('.nav-links');
+
+        if (navToggle && navLinks) {
+            navToggle.addEventListener('click', () => {
+                navLinks.classList.toggle('nav-links-open');
+            });
+        }
+    </script>
 </body>
 </html>

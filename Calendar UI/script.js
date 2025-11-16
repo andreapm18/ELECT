@@ -1,574 +1,497 @@
-// Calendar functionality
-let currentDate = new Date();
-let events = [];
-let datePickerCurrentDate = new Date();
-let currentEditingEventId = null;
+// script.js
 
-// DOM Elements
+// ---------- Calendar State ----------
+let currentDate = new Date();
+let events = JSON.parse(localStorage.getItem('zennedEvents') || '[]');
+
+// ---------- DOM References ----------
+const monthLabel = document.getElementById('currentMonth');
 const calendarGrid = document.getElementById('calendarGrid');
-const currentMonthElement = document.getElementById('currentMonth');
 const prevMonthBtn = document.getElementById('prevMonth');
 const nextMonthBtn = document.getElementById('nextMonth');
-const addEventBtn = document.getElementById('addEvent');
-const importAIBtn = document.getElementById('importAI');
+
+// Date picker
+const datePicker = document.getElementById('datePicker');
+const datePickerMonthYear = document.getElementById('datePickerMonthYear');
+const datePickerGrid = document.getElementById('datePickerGrid');
+const datePrevMonth = document.getElementById('datePrevMonth');
+const dateNextMonth = document.getElementById('dateNextMonth');
+const datePickerToday = document.getElementById('datePickerToday');
+const datePickerClose = document.getElementById('datePickerClose');
+
+// Modals
 const eventModal = document.getElementById('eventModal');
 const importModal = document.getElementById('importModal');
 const eventDetailsModal = document.getElementById('eventDetailsModal');
 const editEventModal = document.getElementById('editEventModal');
-const closeModalBtn = document.getElementById('closeModal');
-const closeImportModalBtn = document.getElementById('closeImportModal');
-const closeEventDetails = document.getElementById('closeEventDetails');
-const closeEventDetailsBtn = document.getElementById('closeEventDetailsBtn');
-const closeEditModal = document.getElementById('closeEditModal');
-const cancelEventBtn = document.getElementById('cancelEvent');
-const cancelImportBtn = document.getElementById('cancelImport');
-const cancelEdit = document.getElementById('cancelEdit');
+
+// Buttons
+const addEventBtn = document.getElementById('addEvent');
+const importAIBtn = document.getElementById('importAI');
+const collapseEventsBtn = document.getElementById('collapseEvents');
+
+// Forms
 const eventForm = document.getElementById('eventForm');
 const editEventForm = document.getElementById('editEventForm');
-const processImportBtn = document.getElementById('processImport');
-const deleteEventBtn = document.getElementById('deleteEventBtn');
-const editEventBtn = document.getElementById('editEventBtn');
-const monthDropdownTrigger = document.getElementById('currentMonth');
-const datePicker = document.getElementById('datePicker');
-const datePickerMonthYear = document.getElementById('datePickerMonthYear');
-const datePrevMonth = document.getElementById('datePrevMonth');
-const dateNextMonth = document.getElementById('dateNextMonth');
-const datePickerGrid = document.getElementById('datePickerGrid');
-const datePickerToday = document.getElementById('datePickerToday');
-const datePickerClose = document.getElementById('datePickerClose');
 
-// Initialize calendar
-function initCalendar() {
-    renderCalendar(currentDate);
-    setupEventListeners();
+// Upcoming events container
+const upcomingEventsContent = document.getElementById('upcomingEventsContent');
+
+// For details/edit/delete
+let activeEventId = null;
+
+// ---------- Utility ----------
+function formatMonthYear(date) {
+    return date.toLocaleString('default', { month: 'long', year: 'numeric' });
 }
 
-// Render calendar for the given month
-function renderCalendar(date) {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    
-    // Update current month display
-    currentMonthElement.textContent = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    
-    // Clear previous calendar
+function formatDateKey(date) {
+    return date.toISOString().split('T')[0]; // yyyy-mm-dd
+}
+
+function saveEvents() {
+    localStorage.setItem('zennedEvents', JSON.stringify(events));
+}
+
+// ---------- Calendar Rendering ----------
+function renderCalendar() {
     calendarGrid.innerHTML = '';
-    
-    // Get first day of month and number of days
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDay = firstDay.getDay();
-    
-    // Previous month days
-    const prevMonthLastDay = new Date(year, month, 0).getDate();
-    for (let i = 0; i < startingDay; i++) {
-        const dayElement = createDayElement(prevMonthLastDay - startingDay + i + 1, true);
-        calendarGrid.appendChild(dayElement);
-    }
-    
-    // Current month days
-    const today = new Date();
-    for (let i = 1; i <= daysInMonth; i++) {
-        const dayElement = createDayElement(i, false);
-        
-        // Check if this day is today
-        if (today.getDate() === i && 
-            today.getMonth() === month && 
-            today.getFullYear() === year) {
-            dayElement.classList.add('today');
+
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    monthLabel.textContent = formatMonthYear(currentDate);
+
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+    const startDay = firstDayOfMonth.getDay(); // 0-6
+
+    const daysInMonth = lastDayOfMonth.getDate();
+
+    // Previous month's trailing days
+    const prevLastDay = new Date(year, month, 0).getDate();
+
+    const todayKey = formatDateKey(new Date());
+
+    const totalCells = 42; // 6 rows x 7 days
+    let dayCounter = 1;
+    let nextMonthDay = 1;
+
+    for (let cell = 0; cell < totalCells; cell++) {
+        const dayCell = document.createElement('div');
+        dayCell.classList.add('calendar-day');
+
+        const cellWrapper = document.createElement('div');
+        cellWrapper.classList.add('day-header');
+
+        const dayNumber = document.createElement('div');
+        dayNumber.classList.add('day-number');
+
+        let cellDate;
+        let inCurrentMonth = false;
+
+        if (cell < startDay) {
+            // days from previous month
+            const dayNum = prevLastDay - (startDay - 1 - cell);
+            dayNumber.textContent = dayNum;
+            dayCell.classList.add('other-month');
+            cellDate = new Date(year, month - 1, dayNum);
+        } else if (dayCounter <= daysInMonth) {
+            // current month
+            dayNumber.textContent = dayCounter;
+            inCurrentMonth = true;
+            cellDate = new Date(year, month, dayCounter);
+            dayCounter++;
+        } else {
+            // next month
+            dayNumber.textContent = nextMonthDay;
+            dayCell.classList.add('other-month');
+            cellDate = new Date(year, month + 1, nextMonthDay);
+            nextMonthDay++;
         }
-        
-        calendarGrid.appendChild(dayElement);
-    }
-    
-    // Next month days
-    const totalCells = 42; // 6 weeks
-    const remainingCells = totalCells - (startingDay + daysInMonth);
-    for (let i = 1; i <= remainingCells; i++) {
-        const dayElement = createDayElement(i, true);
-        calendarGrid.appendChild(dayElement);
-    }
-    
-    // Add events to calendar
-    renderEvents();
-}
 
-// Create a day element
-function createDayElement(dayNumber, isOtherMonth) {
-    const dayElement = document.createElement('div');
-    dayElement.className = 'calendar-day';
-    
-    if (isOtherMonth) {
-        dayElement.classList.add('other-month');
-    }
-    
-    const dayHeader = document.createElement('div');
-    dayHeader.className = 'day-header';
-    
-    const dayNumberElement = document.createElement('div');
-    dayNumberElement.className = 'day-number';
-    dayNumberElement.textContent = dayNumber;
-    
-    const eventsContainer = document.createElement('div');
-    eventsContainer.className = 'events-container';
-    
-    dayHeader.appendChild(dayNumberElement);
-    dayElement.appendChild(dayHeader);
-    dayElement.appendChild(eventsContainer);
-    
-    return dayElement;
-}
+        const dateKey = formatDateKey(cellDate);
 
-// Render events on the calendar
-function renderEvents() {
-    // Clear existing events from calendar
-    document.querySelectorAll('.event').forEach(event => event.remove());
-    
-    // Add events to their respective days
-    events.forEach((event, index) => {
-        const eventDate = new Date(event.date);
-        const dayElements = document.querySelectorAll('.calendar-day:not(.other-month)');
-        
-        dayElements.forEach(dayElement => {
-            const dayNumber = parseInt(dayElement.querySelector('.day-number').textContent);
-            
-            if (dayNumber === eventDate.getDate() && 
-                eventDate.getMonth() === currentDate.getMonth() && 
-                eventDate.getFullYear() === currentDate.getFullYear()) {
-                
-                const eventsContainer = dayElement.querySelector('.events-container');
-                const eventElement = document.createElement('div');
-                eventElement.className = `event category-${event.category}`;
-                eventElement.textContent = event.title;
-                eventElement.style.borderLeftColor = `var(--category-${event.category})`;
-                eventElement.style.backgroundColor = `var(--category-${event.category})20`;
-                
-                // Add event ID for editing
-                eventElement.dataset.eventId = index;
-                
-                eventElement.addEventListener('click', () => {
-                    showEventDetails(event, index);
-                });
-                
-                eventsContainer.appendChild(eventElement);
-            }
+        if (dateKey === todayKey) {
+            dayCell.classList.add('today');
+        }
+
+        cellWrapper.appendChild(dayNumber);
+        dayCell.appendChild(cellWrapper);
+
+        // Events for this date
+        const eventsContainer = document.createElement('div');
+        eventsContainer.classList.add('events-container');
+
+        const dayEvents = events.filter(e => e.date === dateKey);
+        dayEvents.forEach(evt => {
+            const evtEl = document.createElement('div');
+            evtEl.classList.add('event', `category-${evt.category}`);
+            evtEl.textContent = evt.title;
+            evtEl.addEventListener('click', () => openEventDetails(evt.id));
+            eventsContainer.appendChild(evtEl);
         });
-    });
-}
 
-// Show event details in modal
-function showEventDetails(event, eventIndex) {
-    document.getElementById('eventDetailsTitle').textContent = event.title;
-    document.getElementById('eventDetailsDate').textContent = new Date(event.date).toLocaleDateString();
-    document.getElementById('eventDetailsTime').textContent = event.time || 'All day';
-    document.getElementById('eventDetailsDescription').textContent = event.description || 'No description';
-    
-    const categoryBadge = document.getElementById('eventCategoryBadge');
-    categoryBadge.textContent = event.category.charAt(0).toUpperCase() + event.category.slice(1);
-    categoryBadge.className = `event-category category-${event.category}`;
-    
-    // Store the current event for deletion AND editing
-    deleteEventBtn.dataset.eventIndex = eventIndex;
-    currentEditingEventId = eventIndex; // Store for editing
-    
-    eventDetailsModal.style.display = 'flex';
-    setTimeout(() => {
-        eventDetailsModal.classList.add('show');
-    }, 10);
-}
+        dayCell.appendChild(eventsContainer);
 
-// Delete event function
-function deleteEvent(eventIndex) {
-    if (confirm('Are you sure you want to delete this event?')) {
-        events.splice(eventIndex, 1);
-        renderEvents();
-        eventDetailsModal.classList.remove('show');
-        setTimeout(() => {
-            eventDetailsModal.style.display = 'none';
-        }, 300);
-        alert('Event deleted successfully!');
+        // Allow adding event by clicking empty area of current-month cells
+        if (inCurrentMonth) {
+            dayCell.addEventListener('dblclick', () => {
+                openEventModal(dateKey);
+            });
+        }
+
+        calendarGrid.appendChild(dayCell);
     }
+
+    renderUpcomingEvents();
 }
 
-// Edit event function
-function editEvent(eventIndex) {
-    const event = events[eventIndex];
-    
-    if (event) {
-        // Populate the edit form with current event data
-        document.getElementById('editEventTitle').value = event.title;
-        document.getElementById('editEventDate').value = event.date;
-        document.getElementById('editEventTime').value = event.time || '';
-        document.getElementById('editEventDescription').value = event.description || '';
-        document.getElementById('editEventCategory').value = event.category;
-        
-        // Show the edit modal
-        editEventModal.style.display = 'flex';
-        setTimeout(() => {
-            editEventModal.classList.add('show');
-        }, 10);
-    }
-}
+// ---------- Date Picker ----------
+function renderDatePickerView(date = currentDate) {
+    datePickerMonthYear.textContent = formatMonthYear(date);
 
-// Update event function
-function updateEvent(eventIndex) {
-    const event = events[eventIndex];
-    
-    if (event) {
-        // Update the event with new data
-        events[eventIndex] = {
-            ...event,
-            title: document.getElementById('editEventTitle').value,
-            date: document.getElementById('editEventDate').value,
-            time: document.getElementById('editEventTime').value,
-            description: document.getElementById('editEventDescription').value,
-            category: document.getElementById('editEventCategory').value
-        };
-        
-        // Re-render events
-        renderEvents();
-        
-        // Close modals
-        editEventModal.classList.remove('show');
-        eventDetailsModal.classList.remove('show');
-        setTimeout(() => {
-            editEventModal.style.display = 'none';
-            eventDetailsModal.style.display = 'none';
-        }, 300);
-        
-        alert('Event updated successfully!');
-    }
-}
+    const tempDate = new Date(date);
+    tempDate.setDate(1);
 
-// Render date picker
-function renderDatePicker() {
-    const year = datePickerCurrentDate.getFullYear();
-    const month = datePickerCurrentDate.getMonth();
-    
-    datePickerMonthYear.textContent = datePickerCurrentDate.toLocaleDateString('en-US', { 
-        month: 'long', 
-        year: 'numeric' 
-    });
-    
+    const year = tempDate.getFullYear();
+    const month = tempDate.getMonth();
+    const firstDay = tempDate.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const prevLastDay = new Date(year, month, 0).getDate();
+
     datePickerGrid.innerHTML = '';
-    
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDay = firstDay.getDay();
-    
-    // Previous month days
-    const prevMonthLastDay = new Date(year, month, 0).getDate();
-    for (let i = 0; i < startingDay; i++) {
-        const dayElement = createDatePickerDay(prevMonthLastDay - startingDay + i + 1, true);
-        datePickerGrid.appendChild(dayElement);
-    }
-    
-    // Current month days
-    const today = new Date();
-    for (let i = 1; i <= daysInMonth; i++) {
-        const dayElement = createDatePickerDay(i, false);
-        
-        // Check if this day is today
-        if (today.getDate() === i && 
-            today.getMonth() === month && 
-            today.getFullYear() === year) {
-            dayElement.classList.add('today');
-        }
-        
-        // Check if this day is selected
-        if (currentDate.getDate() === i && 
-            currentDate.getMonth() === month && 
-            currentDate.getFullYear() === year) {
-            dayElement.classList.add('selected');
-        }
-        
-        datePickerGrid.appendChild(dayElement);
-    }
-    
-    // Next month days
     const totalCells = 42;
-    const remainingCells = totalCells - (startingDay + daysInMonth);
-    for (let i = 1; i <= remainingCells; i++) {
-        const dayElement = createDatePickerDay(i, true);
-        datePickerGrid.appendChild(dayElement);
+    let dayCounter = 1;
+    let nextMonthDay = 1;
+
+    for (let cell = 0; cell < totalCells; cell++) {
+        const dayEl = document.createElement('div');
+        dayEl.classList.add('date-picker-day');
+
+        let cellDate;
+        if (cell < firstDay) {
+            const dayNum = prevLastDay - (firstDay - 1 - cell);
+            dayEl.textContent = dayNum;
+            dayEl.classList.add('other-month');
+            cellDate = new Date(year, month - 1, dayNum);
+        } else if (dayCounter <= daysInMonth) {
+            dayEl.textContent = dayCounter;
+            cellDate = new Date(year, month, dayCounter);
+            dayCounter++;
+        } else {
+            dayEl.textContent = nextMonthDay;
+            dayEl.classList.add('other-month');
+            cellDate = new Date(year, month + 1, nextMonthDay);
+            nextMonthDay++;
+        }
+
+        const dateKey = formatDateKey(cellDate);
+        if (dateKey === formatDateKey(new Date())) {
+            dayEl.classList.add('today');
+        }
+
+        dayEl.addEventListener('click', () => {
+            currentDate = cellDate;
+            renderCalendar();
+            toggleDatePicker(false);
+        });
+
+        datePickerGrid.appendChild(dayEl);
     }
 }
 
-function createDatePickerDay(dayNumber, isOtherMonth) {
-    const dayElement = document.createElement('div');
-    dayElement.className = 'date-picker-day';
-    dayElement.textContent = dayNumber;
-    
-    if (isOtherMonth) {
-        dayElement.classList.add('other-month');
-    }
-    
-    dayElement.addEventListener('click', () => {
-        if (!isOtherMonth) {
-            currentDate = new Date(datePickerCurrentDate);
-            currentDate.setDate(dayNumber);
-            renderCalendar(currentDate);
-        }
+function toggleDatePicker(show) {
+    if (!datePicker) return;
+    if (show) {
+        datePicker.classList.add('show');
+        renderDatePickerView();
+    } else {
         datePicker.classList.remove('show');
-    });
-    
-    return dayElement;
+    }
 }
 
-// Setup event listeners
-function setupEventListeners() {
-    // Month navigation
-    prevMonthBtn.addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        renderCalendar(currentDate);
+// ---------- Modals ----------
+function openModal(modal) {
+    if (!modal) return;
+    modal.classList.add('show');
+}
+
+function closeModal(modal) {
+    if (!modal) return;
+    modal.classList.remove('show');
+}
+
+// Add event modal
+function openEventModal(dateKey = null) {
+    // Prefill date if provided
+    if (dateKey) {
+        const dateInput = document.getElementById('eventDate');
+        if (dateInput) dateInput.value = dateKey;
+    }
+    openModal(eventModal);
+}
+
+// Event details
+function openEventDetails(id) {
+    const evt = events.find(e => e.id === id);
+    if (!evt) return;
+
+    activeEventId = id;
+
+    document.getElementById('eventDetailsTitle').textContent = evt.title;
+    document.getElementById('eventDetailsDate').textContent = evt.date;
+    document.getElementById('eventDetailsTime').textContent = evt.time || '—';
+    document.getElementById('eventDetailsDescription').textContent = evt.description || '—';
+
+    const badge = document.getElementById('eventCategoryBadge');
+    badge.textContent = evt.category;
+    badge.className = 'event-category category-' + evt.category;
+
+    openModal(eventDetailsModal);
+}
+
+// ---------- Upcoming Events ----------
+function renderUpcomingEvents() {
+    if (!upcomingEventsContent) return;
+    upcomingEventsContent.innerHTML = '';
+
+    const now = new Date();
+    const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date));
+
+    const upcoming = sorted.filter(e => new Date(e.date) >= now).slice(0, 8);
+
+    if (upcoming.length === 0) {
+        const empty = document.createElement('p');
+        empty.textContent = 'No upcoming events yet.';
+        empty.style.fontSize = '0.85rem';
+        empty.style.color = '#8B6F4E';
+        upcomingEventsContent.appendChild(empty);
+        return;
+    }
+
+    upcoming.forEach(evt => {
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('upcoming-event');
+
+        const time = document.createElement('div');
+        time.classList.add('event-time');
+        time.textContent = `${evt.date}${evt.time ? ' • ' + evt.time : ''}`;
+
+        const title = document.createElement('div');
+        title.classList.add('event-title');
+        title.textContent = evt.title;
+
+        const badge = document.createElement('div');
+        badge.classList.add('event-category', 'category-' + evt.category);
+        badge.textContent = evt.category;
+
+        wrapper.appendChild(time);
+        wrapper.appendChild(title);
+        wrapper.appendChild(badge);
+
+        wrapper.addEventListener('click', () => openEventDetails(evt.id));
+
+        upcomingEventsContent.appendChild(wrapper);
     });
-    
-    nextMonthBtn.addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        renderCalendar(currentDate);
-    });
-    
-    // Date picker functionality
-    monthDropdownTrigger.addEventListener('click', (e) => {
-        datePickerCurrentDate = new Date(currentDate);
-        datePicker.classList.toggle('show');
-        renderDatePicker();
-    });
-    
-    // Date picker navigation
-    datePrevMonth.addEventListener('click', () => {
-        datePickerCurrentDate.setMonth(datePickerCurrentDate.getMonth() - 1);
-        renderDatePicker();
-    });
-    
-    dateNextMonth.addEventListener('click', () => {
-        datePickerCurrentDate.setMonth(datePickerCurrentDate.getMonth() + 1);
-        renderDatePicker();
-    });
-    
-    // Today button
-    datePickerToday.addEventListener('click', () => {
-        currentDate = new Date();
-        renderCalendar(currentDate);
-        datePicker.classList.remove('show');
-    });
-    
-    // Close button
-    datePickerClose.addEventListener('click', () => {
-        datePicker.classList.remove('show');
-    });
-    
-    // Close date picker when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!monthDropdownTrigger.contains(e.target) && !datePicker.contains(e.target)) {
-            datePicker.classList.remove('show');
-        }
-    });
-    
-    // Modal controls
-    addEventBtn.addEventListener('click', () => {
-        // Set today's date as default
-        const today = new Date();
-        const formattedDate = today.toISOString().split('T')[0];
-        document.getElementById('eventDate').value = formattedDate;
-        
-        eventModal.style.display = 'flex';
-        setTimeout(() => {
-            eventModal.classList.add('show');
-        }, 10);
-    });
-    
-    importAIBtn.addEventListener('click', () => {
-        importModal.style.display = 'flex';
-        setTimeout(() => {
-            importModal.classList.add('show');
-        }, 10);
-    });
-    
-    closeModalBtn.addEventListener('click', () => {
-        eventModal.classList.remove('show');
-        setTimeout(() => {
-            eventModal.style.display = 'none';
-        }, 300);
-    });
-    
-    closeImportModalBtn.addEventListener('click', () => {
-        importModal.classList.remove('show');
-        setTimeout(() => {
-            importModal.style.display = 'none';
-        }, 300);
-    });
-    
-    closeEventDetails.addEventListener('click', () => {
-        eventDetailsModal.classList.remove('show');
-        setTimeout(() => {
-            eventDetailsModal.style.display = 'none';
-        }, 300);
-    });
-    
-    closeEventDetailsBtn.addEventListener('click', () => {
-        eventDetailsModal.classList.remove('show');
-        setTimeout(() => {
-            eventDetailsModal.style.display = 'none';
-        }, 300);
-    });
-    
-    closeEditModal.addEventListener('click', () => {
-        editEventModal.classList.remove('show');
-        setTimeout(() => {
-            editEventModal.style.display = 'none';
-        }, 300);
-    });
-    
-    cancelEventBtn.addEventListener('click', () => {
-        eventModal.classList.remove('show');
-        setTimeout(() => {
-            eventModal.style.display = 'none';
-        }, 300);
-    });
-    
-    cancelImportBtn.addEventListener('click', () => {
-        importModal.classList.remove('show');
-        setTimeout(() => {
-            importModal.style.display = 'none';
-        }, 300);
-    });
-    
-    cancelEdit.addEventListener('click', () => {
-        editEventModal.classList.remove('show');
-        setTimeout(() => {
-            editEventModal.style.display = 'none';
-        }, 300);
-    });
-    
-    // Delete event button
-    deleteEventBtn.addEventListener('click', () => {
-        const eventIndex = parseInt(deleteEventBtn.dataset.eventIndex);
-        if (!isNaN(eventIndex)) {
-            deleteEvent(eventIndex);
-        }
-    });
-    
-    // Edit event button
-    editEventBtn.addEventListener('click', () => {
-        if (currentEditingEventId !== null) {
-            editEvent(currentEditingEventId);
-        }
-    });
-    
-    processImportBtn.addEventListener('click', () => {
-        const aiInput = document.getElementById('aiInput').value;
-        if (aiInput.trim() === '') {
-            alert('Please describe the events you want to import.');
-            return;
-        }
-        
-        // Simulate AI processing
-        alert('AI is processing your events... This would connect to an AI service in a real application.');
-        importModal.classList.remove('show');
-        setTimeout(() => {
-            importModal.style.display = 'none';
-        }, 300);
-    });
-    
-    // Form submission
+}
+
+// ---------- Event CRUD ----------
+if (eventForm) {
     eventForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        
-        const title = document.getElementById('eventTitle').value;
+
+        const title = document.getElementById('eventTitle').value.trim();
         const date = document.getElementById('eventDate').value;
         const time = document.getElementById('eventTime').value;
-        const description = document.getElementById('eventDescription').value;
         const category = document.getElementById('eventCategory').value;
-        
-        // Add event to events array
-        events.push({
+        const description = document.getElementById('eventDescription').value.trim();
+
+        if (!title || !date) return;
+
+        const newEvent = {
+            id: Date.now().toString(),
             title,
             date,
             time,
-            description,
-            category
-        });
-        
-        // Re-render events
-        renderEvents();
-        
-        // Reset form and close modal
+            category,
+            description
+        };
+
+        events.push(newEvent);
+        saveEvents();
+        renderCalendar();
+        closeModal(eventModal);
         eventForm.reset();
-        eventModal.classList.remove('show');
-        setTimeout(() => {
-            eventModal.style.display = 'none';
-        }, 300);
-        
-        alert('Event added successfully!');
-    });
-    
-    // Edit form submission
-    editEventForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (currentEditingEventId !== null) {
-            updateEvent(currentEditingEventId);
-        }
-    });
-    
-    // Close modals when clicking outside
-    window.addEventListener('click', (e) => {
-        if (e.target === eventModal) {
-            eventModal.classList.remove('show');
-            setTimeout(() => {
-                eventModal.style.display = 'none';
-            }, 300);
-        }
-        if (e.target === importModal) {
-            importModal.classList.remove('show');
-            setTimeout(() => {
-                importModal.style.display = 'none';
-            }, 300);
-        }
-        if (e.target === eventDetailsModal) {
-            eventDetailsModal.classList.remove('show');
-            setTimeout(() => {
-                eventDetailsModal.style.display = 'none';
-            }, 300);
-        }
-        if (e.target === editEventModal) {
-            editEventModal.classList.remove('show');
-            setTimeout(() => {
-                editEventModal.style.display = 'none';
-            }, 300);
-        }
     });
 }
 
-// Upcoming Events Panel Collapse Functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const collapseBtn = document.getElementById('collapseEvents');
-    const eventsContent = document.getElementById('upcomingEventsContent');
-    const collapseIcon = collapseBtn.querySelector('i');
-    
-    if (collapseBtn && eventsContent) {
-        collapseBtn.addEventListener('click', function() {
-            eventsContent.classList.toggle('collapsed');
-            
-            if (eventsContent.classList.contains('collapsed')) {
-                collapseIcon.className = 'fas fa-chevron-up';
-            } else {
-                collapseIcon.className = 'fas fa-chevron-down';
-            }
-        });
-    }
-    
-    // View Controls (purely aesthetic)
-    const viewOptions = document.querySelectorAll('.view-option');
-    viewOptions.forEach(option => {
-        option.addEventListener('click', function() {
-            viewOptions.forEach(opt => opt.classList.remove('active'));
-            this.classList.add('active');
-        });
+// Edit Event
+if (editEventForm) {
+    editEventForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!activeEventId) return;
+        const evt = events.find(e => e.id === activeEventId);
+        if (!evt) return;
+
+        evt.title = document.getElementById('editEventTitle').value.trim();
+        evt.date = document.getElementById('editEventDate').value;
+        evt.time = document.getElementById('editEventTime').value;
+        evt.category = document.getElementById('editEventCategory').value;
+        evt.description = document.getElementById('editEventDescription').value.trim();
+
+        saveEvents();
+        renderCalendar();
+        closeModal(editEventModal);
+        closeModal(eventDetailsModal);
+    });
+}
+
+// Buttons inside Event Details modal
+const editEventBtn = document.getElementById('editEventBtn');
+const deleteEventBtn = document.getElementById('deleteEventBtn');
+const closeEventDetailsBtn = document.getElementById('closeEventDetailsBtn');
+const closeEventDetailsIcon = document.getElementById('closeEventDetails');
+
+if (editEventBtn) {
+    editEventBtn.addEventListener('click', () => {
+        const evt = events.find(e => e.id === activeEventId);
+        if (!evt) return;
+
+        document.getElementById('editEventTitle').value = evt.title;
+        document.getElementById('editEventDate').value = evt.date;
+        document.getElementById('editEventTime').value = evt.time;
+        document.getElementById('editEventCategory').value = evt.category;
+        document.getElementById('editEventDescription').value = evt.description;
+
+        closeModal(eventDetailsModal);
+        openModal(editEventModal);
+    });
+}
+
+if (deleteEventBtn) {
+    deleteEventBtn.addEventListener('click', () => {
+        if (!activeEventId) return;
+        if (!confirm('Delete this event?')) return;
+
+        events = events.filter(e => e.id !== activeEventId);
+        saveEvents();
+        renderCalendar();
+        closeModal(eventDetailsModal);
+    });
+}
+
+if (closeEventDetailsBtn) {
+    closeEventDetailsBtn.addEventListener('click', () => closeModal(eventDetailsModal));
+}
+if (closeEventDetailsIcon) {
+    closeEventDetailsIcon.addEventListener('click', () => closeModal(eventDetailsModal));
+}
+
+// ---------- Other UI Listeners ----------
+if (prevMonthBtn) {
+    prevMonthBtn.addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderCalendar();
+    });
+}
+if (nextMonthBtn) {
+    nextMonthBtn.addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderCalendar();
+    });
+}
+
+if (monthLabel) {
+    monthLabel.addEventListener('click', () => toggleDatePicker(!datePicker.classList.contains('show')));
+}
+
+if (datePrevMonth) {
+    datePrevMonth.addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderDatePickerView(currentDate);
+    });
+}
+
+if (dateNextMonth) {
+    dateNextMonth.addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderDatePickerView(currentDate);
+    });
+}
+
+if (datePickerToday) {
+    datePickerToday.addEventListener('click', () => {
+        currentDate = new Date();
+        renderCalendar();
+        toggleDatePicker(false);
+    });
+}
+
+if (datePickerClose) {
+    datePickerClose.addEventListener('click', () => toggleDatePicker(false));
+}
+
+// Collapse upcoming events
+if (collapseEventsBtn && upcomingEventsContent) {
+    collapseEventsBtn.addEventListener('click', () => {
+        upcomingEventsContent.classList.toggle('hidden');
+        collapseEventsBtn.querySelector('i').classList.toggle('fa-chevron-down');
+        collapseEventsBtn.querySelector('i').classList.toggle('fa-chevron-up');
+    });
+}
+
+// Import AI modal (stub)
+if (importAIBtn && importModal) {
+    importAIBtn.addEventListener('click', () => openModal(importModal));
+    const closeImportModal = document.getElementById('closeImportModal');
+    const cancelImport = document.getElementById('cancelImport');
+    if (closeImportModal) closeImportModal.addEventListener('click', () => closeModal(importModal));
+    if (cancelImport) cancelImport.addEventListener('click', () => closeModal(importModal));
+}
+
+// Add Event button
+if (addEventBtn) {
+    addEventBtn.addEventListener('click', () => openEventModal());
+}
+
+// Close buttons for other modals
+const closeModalButtons = [
+    document.getElementById('closeModal'),
+    document.getElementById('cancelEvent'),
+    document.getElementById('closeEditModal'),
+    document.getElementById('cancelEdit')
+];
+
+closeModalButtons.forEach(btn => {
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+        closeModal(eventModal);
+        closeModal(editEventModal);
     });
 });
 
-// Initialize the calendar when page loads
-document.addEventListener('DOMContentLoaded', initCalendar);
+// --- View toggle behavior (Day / Week / Month) ---
+const viewOptions = document.querySelectorAll('.view-option');
+const viewIndicator = document.querySelector('.view-indicator');
+
+if (viewOptions.length && viewIndicator) {
+    viewOptions.forEach((option, index) => {
+        option.addEventListener('click', () => {
+            // Update active state
+            viewOptions.forEach(o => o.classList.remove('active'));
+            option.classList.add('active');
+
+            // Slide the indicator under the selected option
+            const offset = index * 100; // 0%, 100%, 200%
+            viewIndicator.style.transform = `translateX(${offset}%) translateY(-50%)`;
+
+        });
+    });
+}
+
+
+// Initial render
+renderCalendar();
+
+
