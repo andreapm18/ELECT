@@ -405,7 +405,7 @@ body {
 }
 
 .month-nav h3 {
-    font-size: 18px;
+    font-size: 19px;
     font-weight: 600;
     min-width: 170px;
     text-align: center;
@@ -534,7 +534,7 @@ body {
     gap: 2px;
     background: rgba(255, 250, 238, 0.9);
     border-radius: 999px;
-    padding: 3px;
+    padding: 6px;
     margin-left: auto;
     margin-right: 8px;
 }
@@ -1358,7 +1358,7 @@ body {
     top: 50%;
     transform: translateY(-50%); /* vertically center the pill */
     height: 32px;                /* matches view-option height */
-    width: calc(100% / 3);
+    width: calc(95% / 3);
     border-radius: 999px;
     z-index: 1;
     transition: transform 0.25s ease;
@@ -1434,4 +1434,17 @@ body {
     0%   { transform: translate(0,0) rotate(0deg); }
     100% { transform: translate(40px, -30px) rotate(6deg); }
 }
+
+/* Make "Add Event" button soft yellow with no border */
+.calendar-actions .btn-secondary {
+    background: rgba(244, 180, 26, 0.18);   /* same soft honey as nav circle */
+    border: none;                           /* remove border */
+    color: var(--text);                     /* keep readable text */
+}
+
+.calendar-actions .btn-secondary:hover {
+    background: rgba(244, 180, 26, 0.28);   /* slightly brighter hover */
+    transform: translateY(-1px);
+}
+
 

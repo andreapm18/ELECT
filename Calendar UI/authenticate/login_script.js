@@ -90,7 +90,7 @@ if (signupForm) {
             if (t.getAttribute('data-tab') === 'login') t.click();
         });
     });
-    
+
 /* ===== Add 3 floating bees on the login page ===== */
 document.addEventListener("DOMContentLoaded", () => {
     const container = document.querySelector(".auth-container");
@@ -110,6 +110,8 @@ document.addEventListener("DOMContentLoaded", () => {
         container.appendChild(bee);
     }
 });
+
+
 
     
 }
