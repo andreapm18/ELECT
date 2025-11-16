@@ -12,6 +12,8 @@ tabs.forEach(tab => {
         tabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
 
+        
+
         // Toggle active form
         forms.forEach(form => {
             if (form.id === target + 'Form') {
@@ -19,7 +21,14 @@ tabs.forEach(tab => {
             } else {
                 form.classList.remove('active');
             }
+
+            
+
+            
         });
+
+
+        
 
                 // Update heading + subtitle dynamically
         const title = document.getElementById('authTitle');
@@ -110,6 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
         container.appendChild(bee);
     }
 });
+
 
 
 
